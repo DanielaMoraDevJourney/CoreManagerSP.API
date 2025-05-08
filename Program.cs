@@ -35,6 +35,19 @@ builder.Services.AddScoped<ISolicitudPrestamoService, SolicitudPrestamoService>(
 builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
+
+// CORS: Política para permitir todos los orígenes (desarrollo) 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("PermitirTodo", policy =>
+    {
+        policy
+            .AllowAnyOrigin()
+            .AllowAnyMethod()
+            .AllowAnyHeader();
+    });
+});
+
 // Configuración de autenticación JWT
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -109,10 +122,10 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 // ORDEN CORRECTO DE MIDDLEWARES
+app.UseCors("PermitirTodo");
 app.UseAuthentication();                     // 1. Autenticación
 app.UseMiddleware<TokenActivoMiddleware>();  // 2. Validación de token activo
 app.UseAuthorization();                      // 3. Autorización
-app.UseMiddleware<TokenActivoMiddleware>(); 
 
 app.MapControllers();
 

@@ -2,6 +2,7 @@
 using CoreManagerSP.API.CoreManager.Application.DTOs.Prestamo;
 using CoreManagerSP.API.CoreManager.Application.DTOs.Prestamo.Analisis;
 using CoreManagerSP.API.CoreManager.Application.DTOs.Prestamo.Historial;
+using CoreManagerSP.API.CoreManager.Application.DTOs.Prestamo.Mejoras;
 using CoreManagerSP.API.CoreManager.Application.DTOs.Prestamo.Sugerencias;
 using CoreManagerSP.API.CoreManager.Application.Interfaces.Prestamo;
 using CoreManagerSP.API.CoreManager.Domain.Entities;
@@ -98,6 +99,8 @@ namespace CoreManagerSP.API.CoreManager.API.Controllers
         /// <summary>
         /// Aplica mejoras al perfil del usuario y vuelve a ejecutar el análisis.
         /// </summary>
+        ///
+        /*
         [HttpPost("aplicar-mejoras")]
         public async Task<IActionResult> AplicarMejoras([FromBody] AplicarMejorasDto dto)
         {
@@ -107,7 +110,7 @@ namespace CoreManagerSP.API.CoreManager.API.Controllers
             if (!exito) return NotFound("No se encontró la solicitud o falló la aplicación de mejoras.");
 
             return Ok("Mejoras aplicadas y reanálisis realizado con éxito.");
-        }
+        }*/
 
         // ------------------------------------------------------------------------------------------
         // OPCIONALES 
@@ -137,23 +140,27 @@ namespace CoreManagerSP.API.CoreManager.API.Controllers
         /// <summary>
         /// [OPCIONAL] Devuelve análisis por entidad (sin incluir mejoras).
         /// </summary>
+        /// 
+        /*
         [HttpGet("{solicitudId}/entidad/{entidadId}")]
         public async Task<ActionResult<AnalisisDetalleDto>> GetDetallePorEntidad(int solicitudId, int entidadId)
         {
             var detalle = await _service.ObtenerAnalisisPorEntidadAsync(solicitudId, entidadId);
             if (detalle == null) return NotFound();
             return Ok(detalle);
-        }
+        }*/
 
         /// <summary>
         /// [OPCIONAL] Devuelve todas las mejoras sugeridas para una solicitud y entidad.
         /// </summary>
-        [HttpGet("{solicitudId}/entidad/{entidadId}/mejoras")]
+        /// 
+
+        /*[HttpGet("{solicitudId}/entidad/{entidadId}/mejoras")]
         public async Task<ActionResult<List<MejoraSugerida>>> GetMejoras(int solicitudId, int entidadId)
         {
             var mejoras = await _service.ObtenerMejorasPorEntidadAsync(solicitudId, entidadId);
             return Ok(mejoras);
-        }
+        }*/
 
         /// <summary>
         /// [OPCIONAL] Devuelve toda la información analizada y agrupada por entidad (uso interno).
@@ -198,5 +205,29 @@ namespace CoreManagerSP.API.CoreManager.API.Controllers
 
             return Ok(resultado);
         }
+
+
+        /// <summary>
+        /// Aplica una o más mejoras seleccionadas, recalcula el análisis, 
+        /// genera una nueva solicitud y devuelve comparativo entre original y mejorada.
+        /// </summary>
+        [HttpPost("aplicar-mejoras-avanzado")]
+        public async Task<ActionResult<ResultadoMejorasAplicadasDto>> AplicarMejorasAvanzado([FromBody] AplicarMejorasSimuladasDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            try
+            {
+                var resultado = await _service.AplicarMejorasAvanzadoAsync(dto);
+                return Ok(resultado);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { mensaje = "Ocurrió un error al aplicar mejoras avanzadas.", detalle = ex.Message });
+            }
+        }
+
+
     }
 }

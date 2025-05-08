@@ -2,6 +2,7 @@
 using CoreManagerSP.API.CoreManager.Application.DTOs.Prestamo;
 using CoreManagerSP.API.CoreManager.Application.DTOs.Prestamo.Analisis;
 using CoreManagerSP.API.CoreManager.Application.DTOs.Prestamo.Historial;
+using CoreManagerSP.API.CoreManager.Application.DTOs.Prestamo.Mejoras;
 using CoreManagerSP.API.CoreManager.Application.DTOs.Prestamo.Sugerencias;
 using CoreManagerSP.API.CoreManager.Domain.Entities;
 
@@ -20,6 +21,8 @@ namespace CoreManagerSP.API.CoreManager.Application.Interfaces.Prestamo
         Task<bool> CrearSimulacionCompletaAsync(SimulacionCompletaDto dto);
         Task<AnalisisEntidadCompletoDto> ObtenerAnalisisCompletoPorEntidadAsync(int solicitudId, int entidadId);
         Task<List<AnalisisEntidadCompletoDto>> CompararEntidadesAsync(int solicitudId, List<int> entidadIds);
+        Task<ResultadoMejorasAplicadasDto> AplicarMejorasAvanzadoAsync(AplicarMejorasSimuladasDto dto);
+
 
 
 

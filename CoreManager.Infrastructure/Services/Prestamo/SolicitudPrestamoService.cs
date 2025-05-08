@@ -2,6 +2,7 @@
 using CoreManagerSP.API.CoreManager.Application.DTOs.Prestamo;
 using CoreManagerSP.API.CoreManager.Application.DTOs.Prestamo.Analisis;
 using CoreManagerSP.API.CoreManager.Application.DTOs.Prestamo.Historial;
+using CoreManagerSP.API.CoreManager.Application.DTOs.Prestamo.Mejoras;
 using CoreManagerSP.API.CoreManager.Application.DTOs.Prestamo.Sugerencias;
 using CoreManagerSP.API.CoreManager.Application.DTOs.Prestamo.Sugerencias.CoreManagerSP.API.CoreManager.Application.DTOs.Prestamo.Analisis;
 using CoreManagerSP.API.CoreManager.Application.Interfaces.Prestamo;
@@ -557,6 +558,113 @@ namespace CoreManagerSP.API.CoreManager.Infrastructure.Services.Prestamo
 
             return comparativas;
         }
+
+
+        public async Task<ResultadoMejorasAplicadasDto> AplicarMejorasAvanzadoAsync(AplicarMejorasSimuladasDto dto)
+        {
+            var solicitudOriginal = await _context.Solicitudes
+                .Include(s => s.Usuario)
+                .Include(s => s.TipoPrestamo)
+                .FirstOrDefaultAsync(s => s.Id == dto.SolicitudId);
+
+            if (solicitudOriginal == null) throw new Exception("Solicitud no encontrada.");
+
+            var usuario = solicitudOriginal.Usuario;
+            var perfilActualizado = new Dictionary<string, string>();
+
+            foreach (var mejora in dto.MejorasSeleccionadas)
+            {
+                switch (mejora.Variable)
+                {
+                    case "Ingreso":
+                        perfilActualizado["Ingreso"] = mejora.ValorNuevo;
+                        usuario.Ingreso = decimal.Parse(mejora.ValorNuevo); break;
+                    case "TarjetaCredito":
+                        perfilActualizado["TarjetaCredito"] = mejora.ValorNuevo;
+                        usuario.TarjetaCredito = bool.Parse(mejora.ValorNuevo); break;
+                    case "AniosHistorialCrediticio":
+                        perfilActualizado["AniosHistorialCrediticio"] = mejora.ValorNuevo;
+                        usuario.AniosHistorialCrediticio = int.Parse(mejora.ValorNuevo); break;
+                    case "DeudasVigentes":
+                        perfilActualizado["DeudasVigentes"] = mejora.ValorNuevo;
+                        usuario.DeudasVigentes = decimal.Parse(mejora.ValorNuevo); break;
+                    case "CuotasMensualesComprometidas":
+                        perfilActualizado["CuotasMensualesComprometidas"] = mejora.ValorNuevo;
+                        usuario.CuotasMensualesComprometidas = decimal.Parse(mejora.ValorNuevo); break;
+                    case "NumeroCreditosActivos":
+                        perfilActualizado["NumeroCreditosActivos"] = mejora.ValorNuevo;
+                        usuario.NumeroCreditosActivos = int.Parse(mejora.ValorNuevo); break;
+                    case "TiempoUltimoIncumplimiento":
+                        perfilActualizado["TiempoUltimoIncumplimiento"] = mejora.ValorNuevo;
+                        usuario.TiempoUltimoIncumplimiento = mejora.ValorNuevo; break;
+                }
+            }
+
+            _context.Usuarios.Update(usuario);
+            await _context.SaveChangesAsync();
+
+            // Obtener ranking de la solicitud original
+            var rankingOriginal = await ObtenerRankingPorSolicitudAsync(dto.SolicitudId);
+
+            var nuevaSolicitud = new SolicitudPrestamo
+            {
+                UsuarioId = usuario.Id,
+                TipoPrestamoId = solicitudOriginal.TipoPrestamoId,
+                Monto = solicitudOriginal.Monto,
+                Plazo = solicitudOriginal.Plazo,
+                Proposito = solicitudOriginal.Proposito + " (mejorado)",
+                CuotaEstimadaCliente = solicitudOriginal.CuotaEstimadaCliente,
+                Estado = "Analizada",
+                FechaSolicitud = DateTime.UtcNow
+            };
+
+            _context.Solicitudes.Add(nuevaSolicitud);
+            await _context.SaveChangesAsync();
+
+            await GenerarAnalisisYMejorasAsync(
+                nuevaSolicitud,
+                usuario,
+                nuevaSolicitud.Monto,
+                nuevaSolicitud.Plazo,
+                nuevaSolicitud.TipoPrestamoId,
+                true
+            );
+
+            var rankingNuevo = await ObtenerRankingPorSolicitudAsync(nuevaSolicitud.Id);
+
+            return new ResultadoMejorasAplicadasDto
+            {
+                Mensaje = "Mejoras aplicadas y nueva simulación generada.",
+                Fecha = nuevaSolicitud.FechaSolicitud,
+                PerfilActualizado = perfilActualizado,
+
+                SolicitudOriginal = new SolicitudResumenDto
+                {
+                    Id = solicitudOriginal.Id,
+                    Fecha = solicitudOriginal.FechaSolicitud,
+                    Estado = solicitudOriginal.Estado,
+                    Monto = solicitudOriginal.Monto,
+                    Plazo = solicitudOriginal.Plazo,
+                    CuotaEstimada = solicitudOriginal.CuotaEstimadaCliente,
+                    TipoPrestamo = solicitudOriginal.TipoPrestamo.Nombre,
+                    Ranking = rankingOriginal
+                },
+
+                SolicitudMejorada = new SolicitudResumenDto
+                {
+                    Id = nuevaSolicitud.Id,
+                    Fecha = nuevaSolicitud.FechaSolicitud,
+                    Estado = nuevaSolicitud.Estado,
+                    Monto = nuevaSolicitud.Monto,
+                    Plazo = nuevaSolicitud.Plazo,
+                    CuotaEstimada = nuevaSolicitud.CuotaEstimadaCliente,
+                    TipoPrestamo = solicitudOriginal.TipoPrestamo.Nombre,
+                    Ranking = rankingNuevo
+                }
+            };
+        }
+
+
 
 
     }
