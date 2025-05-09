@@ -15,7 +15,7 @@ El sistema busca ofrecer a los usuarios una herramienta interactiva para simular
 
 ## Despliegue en Producción
 
-**🔗 Enlace al sistema desplegado:** *\[por agregar]*
+Enlace al sistema desplegado: https://coremanagersp-api.onrender.com
 
 ---
 
