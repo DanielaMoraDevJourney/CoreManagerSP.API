@@ -4,10 +4,13 @@ using CoreManagerSP.API.CoreManager.Application.DTOs.Prestamo.Analisis;
 using CoreManagerSP.API.CoreManager.Application.DTOs.Prestamo.Historial;
 using CoreManagerSP.API.CoreManager.Application.DTOs.Prestamo.Mejoras;
 using CoreManagerSP.API.CoreManager.Application.DTOs.Prestamo.Sugerencias;
+using CoreManagerSP.API.CoreManager.Application.DTOs.Prestamo.TipoPrestamo;
 using CoreManagerSP.API.CoreManager.Application.Interfaces.Prestamo;
 using CoreManagerSP.API.CoreManager.Domain.Entities;
+using CoreManagerSP.API.CoreManager.Infrastructure.Configurations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace CoreManagerSP.API.CoreManager.API.Controllers
 {
@@ -17,10 +20,13 @@ namespace CoreManagerSP.API.CoreManager.API.Controllers
     public class SolicitudPrestamoController : ControllerBase
     {
         private readonly ISolicitudPrestamoService _service;
+        private readonly CoreManagerDbContext _context;
 
-        public SolicitudPrestamoController(ISolicitudPrestamoService service)
+        public SolicitudPrestamoController(ISolicitudPrestamoService service, CoreManagerDbContext context)
         {
             _service = service;
+            _context = context;
+
         }
 
         // ------------------------------------------------------------------------------------------
@@ -227,6 +233,21 @@ namespace CoreManagerSP.API.CoreManager.API.Controllers
                 return StatusCode(500, new { mensaje = "Ocurrió un error al aplicar mejoras avanzadas.", detalle = ex.Message });
             }
         }
+
+        [HttpGet("combo")]
+        public async Task<IActionResult> ObtenerParaCombo()
+        {
+            var tipos = await _context.TiposPrestamo
+                .Select(tp => new TipoPrestamoComboDto
+                {
+                    Id = tp.Id,
+                    Nombre = tp.Nombre
+                })
+                .ToListAsync();
+
+            return Ok(tipos);
+        }
+
 
 
     }

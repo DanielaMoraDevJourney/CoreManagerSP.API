@@ -1,4 +1,4 @@
-﻿using CoreManagerSP.API.CoreManager.Application.DTOs.Prestamo;
+﻿using CoreManagerSP.API.CoreManager.Application.DTOs.Prestamo.TipoPrestamo;
 using CoreManagerSP.API.CoreManager.Application.Interfaces.Prestamo;
 using CoreManagerSP.API.CoreManager.Domain.Entities;
 using CoreManagerSP.API.CoreManager.Infrastructure.Configurations;

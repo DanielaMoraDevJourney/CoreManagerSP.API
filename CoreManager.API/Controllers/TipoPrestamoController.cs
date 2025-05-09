@@ -1,27 +1,33 @@
-﻿using CoreManagerSP.API.CoreManager.Application.DTOs.Prestamo;
+﻿using CoreManagerSP.API.CoreManager.Application.DTOs.Prestamo.TipoPrestamo;
 using CoreManagerSP.API.CoreManager.Application.Interfaces.Prestamo;
 using CoreManagerSP.API.CoreManager.Domain.Entities;
+using CoreManagerSP.API.CoreManager.Infrastructure.Configurations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace CoreManagerSP.API.CoreManager.API.Controllers
 {
-    [Authorize(Roles = "Admin")]
     [ApiController]
     [Route("api/[controller]")]
     public class TipoPrestamoController : ControllerBase
     {
         private readonly ITipoPrestamoService _service;
+        private readonly CoreManagerDbContext _context;
 
-        public TipoPrestamoController(ITipoPrestamoService service)
+
+        public TipoPrestamoController(ITipoPrestamoService service, CoreManagerDbContext context)
         {
             _service = service;
+            _context = context;
         }
 
         /// <summary>
         /// Obtiene todos los tipos de préstamo disponibles en el sistema.
         /// </summary>
         /// <returns>Lista de tipos de préstamo.</returns>
+        
+        [Authorize(Roles = "Usuario,Admin")]
         [HttpGet]
         public async Task<ActionResult<List<TipoPrestamo>>> Get()
         {
@@ -34,6 +40,8 @@ namespace CoreManagerSP.API.CoreManager.API.Controllers
         /// </summary>
         /// <param name="id">ID del tipo de préstamo.</param>
         /// <returns>Tipo de préstamo encontrado o mensaje de error.</returns>
+        /// 
+        [Authorize(Roles = "Admin")]
         [HttpGet("{id}")]
         public async Task<ActionResult<TipoPrestamo>> GetById(int id)
         {
@@ -48,6 +56,8 @@ namespace CoreManagerSP.API.CoreManager.API.Controllers
         /// </summary>
         /// <param name="dto">DTO con los datos del tipo de préstamo a crear.</param>
         /// <returns>Tipo de préstamo creado o mensaje de error.</returns>
+
+        [Authorize(Roles = "Admin")]
         [HttpPost]
         public async Task<ActionResult<TipoPrestamo>> Create([FromBody] TipoPrestamoCreateDto dto)
         {
@@ -78,12 +88,16 @@ namespace CoreManagerSP.API.CoreManager.API.Controllers
         /// </summary>
         /// <param name="id">ID del tipo de préstamo a eliminar.</param>
         /// <returns>NoContent si fue eliminado correctamente, o NotFound si no existe.</returns>
+        [Authorize(Roles = "Admin")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
             var eliminado = await _service.EliminarAsync(id);
             return eliminado ? NoContent() : NotFound("No se encontró el tipo de préstamo para eliminar.");
         }
+
+
+
 
     }
 }

@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace CoreManagerSP.API.CoreManager.Application.DTOs.Prestamo
+namespace CoreManagerSP.API.CoreManager.Application.DTOs.Prestamo.TipoPrestamo
 {
     public class TipoPrestamoCreateDto
     {
@@ -10,7 +10,7 @@ namespace CoreManagerSP.API.CoreManager.Application.DTOs.Prestamo
         public string Descripcion { get; set; }
 
         [Required]
-        public string TipoGeneral { get; set; } 
+        public string TipoGeneral { get; set; }
 
         [Range(0.01, 100)]
         public decimal TasaBase { get; set; }
