@@ -22,15 +22,10 @@ namespace CoreManagerSP.API.CoreManager.API.Controllers
             _context = context;
         }
 
-        // ───────────────────────────────────────────────────────────────────────────────
-        // AUTENTICACIÓN Y GESTIÓN DE SESIONES
-        // ───────────────────────────────────────────────────────────────────────────────
+        // ──────────────────────────────────────────────────────────────
+        // ENDPOINTS ACTIVOS (Login / Logout / Registro)
+        // ──────────────────────────────────────────────────────────────
 
-        /// <summary>
-        /// Inicia sesión como administrador.
-        /// </summary>
-        /// <param name="dto">Credenciales de acceso (correo y contraseña).</param>
-        /// <returns>Token JWT y datos del administrador.</returns>
         [AllowAnonymous]
         [HttpPost("login")]
         public async Task<ActionResult<AdminLoginResponseDto>> Login([FromBody] AdminLoginDto dto)
@@ -48,10 +43,28 @@ namespace CoreManagerSP.API.CoreManager.API.Controllers
             return Ok(result);
         }
 
-        /// <summary>
-        /// Cierra sesión y desactiva el token activo.
-        /// </summary>
-        /// <returns>Mensaje de éxito si se cerró sesión correctamente.</returns>
+        [AllowAnonymous]
+        [HttpPost("register")]
+        public async Task<ActionResult<AdminResponseDto>> Register([FromBody] AdminCreateDto dto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
+
+            try
+            {
+                var admin = await _adminService.CrearAsync(dto);
+                return CreatedAtAction(nameof(Register), new { id = admin.Id }, admin);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(new { mensaje = ex.Message });
+            }
+            catch
+            {
+                return StatusCode(500, new { mensaje = "Error interno al registrar el administrador." });
+            }
+        }
+
         [Authorize(Roles = "Admin")]
         [HttpPost("logout")]
         public async Task<IActionResult> Logout()
@@ -73,40 +86,11 @@ namespace CoreManagerSP.API.CoreManager.API.Controllers
             return Ok("Sesión cerrada exitosamente.");
         }
 
-        // ───────────────────────────────────────────────────────────────────────────────
-        // CRUD DE ADMINISTRADORES
-        // ───────────────────────────────────────────────────────────────────────────────
+        // ──────────────────────────────────────────────────────────────
+        // CRUD COMENTADO (Obtener, Eliminar)
+        // ──────────────────────────────────────────────────────────────
 
-        /// <summary>
-        /// Crea un nuevo administrador.
-        /// </summary>
-        /// <param name="dto">Datos del nuevo administrador.</param>
-        /// <returns>Administrador creado.</returns>
-        [AllowAnonymous]
-        [HttpPost("crear")]
-        public async Task<ActionResult<AdminResponseDto>> Crear([FromBody] AdminCreateDto dto)
-        {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
-            try
-            {
-                var admin = await _adminService.CrearAsync(dto);
-                return CreatedAtAction(nameof(ObtenerPorId), new { id = admin.Id }, admin);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(new { mensaje = ex.Message });
-            }
-            catch
-            {
-                return StatusCode(500, new { mensaje = "Error interno al crear el administrador." });
-            }
-        }
-
-        /// <summary>
-        /// Obtiene la lista de todos los administradores registrados.
-        /// </summary>
+        /*
         [Authorize(Roles = "Admin")]
         [HttpGet]
         public async Task<ActionResult<List<AdminResponseDto>>> ObtenerTodos()
@@ -115,11 +99,6 @@ namespace CoreManagerSP.API.CoreManager.API.Controllers
             return Ok(admins);
         }
 
-        /// <summary>
-        /// Obtiene un administrador específico por su ID.
-        /// </summary>
-        /// <param name="id">ID del administrador.</param>
-        /// <returns>Datos del administrador si existe.</returns>
         [Authorize(Roles = "Admin")]
         [HttpGet("{id}")]
         public async Task<ActionResult<AdminResponseDto>> ObtenerPorId(int id)
@@ -129,11 +108,6 @@ namespace CoreManagerSP.API.CoreManager.API.Controllers
             return Ok(admin);
         }
 
-        /// <summary>
-        /// Elimina un administrador por su ID.
-        /// </summary>
-        /// <param name="id">ID del administrador a eliminar.</param>
-        /// <returns>NoContent si se eliminó, NotFound si no existe.</returns>
         [Authorize(Roles = "Admin")]
         [HttpDelete("{id}")]
         public async Task<IActionResult> Eliminar(int id)
@@ -141,5 +115,6 @@ namespace CoreManagerSP.API.CoreManager.API.Controllers
             var eliminado = await _adminService.EliminarAsync(id);
             return eliminado ? NoContent() : NotFound();
         }
+        */
     }
 }

@@ -9,22 +9,21 @@ using System.Security.Claims;
 namespace CoreManagerSP.API.CoreManager.API.Controllers
 {
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/auth/usuario")] 
     public class AuthController : ControllerBase
     {
         private readonly IAuthService _authService;
         private readonly CoreManagerDbContext _context;
 
-        public AuthController(IAuthService authService)
+        public AuthController(IAuthService authService, CoreManagerDbContext context)
         {
             _authService = authService;
+            _context = context;
         }
 
         /// <summary>
-        /// Inicia sesión para usuarios registrados (rol Usuario).
+        /// Inicia sesión como Usuario (rol Usuario).
         /// </summary>
-        /// <param name="dto">DTO con correo y contraseña.</param>
-        /// <returns>Token JWT válido si las credenciales son correctas.</returns>
         [AllowAnonymous]
         [HttpPost("login")]
         public async Task<ActionResult<LoginResponseDto>> Login([FromBody] LoginRequestDto dto)
@@ -35,10 +34,8 @@ namespace CoreManagerSP.API.CoreManager.API.Controllers
         }
 
         /// <summary>
-        /// Registra un nuevo usuario con correo y contraseña.
+        /// Registra un nuevo Usuario (no administrador).
         /// </summary>
-        /// <param name="dto">DTO con los datos de registro del usuario.</param>
-        /// <returns>200 si el registro fue exitoso, 400 si ya existe un correo.</returns>
         [AllowAnonymous]
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequestDto dto)
@@ -49,11 +46,9 @@ namespace CoreManagerSP.API.CoreManager.API.Controllers
         }
 
         /// <summary>
-        /// Cierra la sesión del usuario autenticado.
+        /// Cierra la sesión del Usuario autenticado.
         /// </summary>
-        /// <remarks>El token debe ser enviado en el header Authorization.</remarks>
-        /// <returns>200 si el token fue invalidado correctamente.</returns>
-        [Authorize]
+        [Authorize(Roles = "Usuario")]
         [HttpPost("logout")]
         public async Task<IActionResult> Logout()
         {

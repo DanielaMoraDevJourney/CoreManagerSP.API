@@ -1,4 +1,5 @@
-﻿using CoreManagerSP.API.CoreManager.Application.DTOs.EntidadFinanciera;
+﻿using CoreManagerSP.API.CoreManager.Application.DTOs.EntidadesFinancieras;
+using CoreManagerSP.API.CoreManager.Application.DTOs.EntidadFinanciera;
 using CoreManagerSP.API.CoreManager.Application.Interfaces.EntidadesFinancieras;
 using CoreManagerSP.API.CoreManager.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
@@ -23,11 +24,28 @@ namespace CoreManagerSP.API.CoreManager.API.Controllers
         /// </summary>
         /// <returns>Lista de entidades financieras.</returns>
         [HttpGet]
-        public async Task<ActionResult<List<EntidadFinanciera>>> Get()
+        public async Task<ActionResult<List<EntidadFinancieraDto>>> Get()
         {
             var entidades = await _service.ObtenerTodosAsync();
-            return Ok(entidades);
+
+            var dtoList = entidades.Select(e => new EntidadFinancieraDto
+            {
+                Id = e.Id,
+                Nombre = e.Nombre,
+                TasaInteres = e.TasaInteres,
+                IngresoMinimo = e.IngresoMinimo,
+                RelacionCuotaIngresoMaxima = e.RelacionCuotaIngresoMaxima,
+                AntiguedadHistorialMinima = e.AntiguedadHistorialMinima,
+                AceptaMora = e.AceptaMora,
+                RequiereTarjetaCredito = e.RequiereTarjetaCredito,
+                TiposPrestamo = e.EntidadesTipoPrestamo?
+                    .Select(tp => tp.TipoPrestamo?.Nombre ?? "Desconocido")
+                    .ToList() ?? new List<string>()
+            }).ToList();
+
+            return Ok(dtoList);
         }
+
 
         /// <summary>
         /// Obtiene una entidad financiera por su ID.

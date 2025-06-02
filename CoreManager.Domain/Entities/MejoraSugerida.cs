@@ -20,7 +20,7 @@ namespace CoreManagerSP.API.CoreManager.Domain.Entities
         [MaxLength(300)]
         public string Descripcion { get; set; }
 
-        public string ImpactoEstimado { get; set; }
+        public decimal ImpactoEstimado { get; set; }
         public bool EsObligatoria { get; set; }
 
         [Range(1, 5)]

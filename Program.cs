@@ -6,37 +6,61 @@ using CoreManagerSP.API.CoreManager.Application.Interfaces.Usuarios;
 using CoreManagerSP.API.CoreManager.Infrastructure.Configurations;
 using CoreManagerSP.API.CoreManager.Infrastructure.Services.Auth;
 using CoreManagerSP.API.CoreManager.Infrastructure.Services.EntidadesFinancieras;
-using CoreManagerSP.API.CoreManager.Infrastructure.Services.Prestamo;
+using CoreManagerSP.API.CoreManager.Application.Services.Prestamo; 
 using CoreManagerSP.API.CoreManager.Infrastructure.Services.Usuarios;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using System.Security.Claims;
 using System.Text;
+using CoreManagerSP.API.CoreManager.Infrastructure.Services.Prestamo;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configuración de la conexión a base de datos
+// BASE DE DATOS
+
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 
 builder.Services.AddDbContext<CoreManagerDbContext>(options =>
     options.UseSqlServer(connectionString));
 
-// Servicios y controladores
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
-// Servicios de aplicación
+// SERVICIOS
 builder.Services.AddScoped<IUsuarioService, UsuarioService>();
 builder.Services.AddScoped<ITipoPrestamoService, TipoPrestamoService>();
 builder.Services.AddScoped<IEntidadFinancieraService, EntidadFinancieraService>();
-builder.Services.AddScoped<ISolicitudPrestamoService, SolicitudPrestamoService>();
 builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 
+// Servicios refactorizados
+builder.Services.AddScoped<ISolicitudService, SolicitudService>();
+builder.Services.AddScoped<ISimulacionService, SimulacionService>();
+builder.Services.AddScoped<IAnalisisService, AnalisisService>();
+builder.Services.AddScoped<IMejorasService, MejorasService>();
 
-// CORS: Política para permitir todos los orígenes (desarrollo) 
+// AUTENTICACIÓN JWT
+var jwtSection = builder.Configuration.GetRequiredSection("Jwt");
+var jwtKey = jwtSection.GetValue<string>("Key") ?? throw new InvalidOperationException("JWT Key missing.");
+var jwtIssuer = jwtSection.GetValue<string>("Issuer") ?? "CoreManager";
+var jwtAudience = jwtSection.GetValue<string>("Audience") ?? "CoreManagerUsuarios";
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = jwtIssuer,
+            ValidAudience = jwtAudience,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
+            RoleClaimType = ClaimTypes.Role
+        };
+    });
+
+
+// CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("PermitirTodo", policy =>
@@ -48,24 +72,7 @@ builder.Services.AddCors(options =>
     });
 });
 
-// Configuración de autenticación JWT
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
-    {
-        options.TokenValidationParameters = new TokenValidationParameters
-        {
-            ValidateIssuer = true,
-            ValidateAudience = true,
-            ValidateLifetime = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer = builder.Configuration["Jwt:Issuer"],
-            ValidAudience = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(
-                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!)),
-             RoleClaimType = ClaimTypes.Role
-        };
-    });
-
+// SWAGGER + SEGURIDAD JWT
 builder.Services.AddSwaggerGen(c =>
 {
     c.SwaggerDoc("v1", new() { Title = "CoreManager API", Version = "v1" });
@@ -73,8 +80,7 @@ builder.Services.AddSwaggerGen(c =>
     c.AddSecurityDefinition("Bearer", new()
     {
         Description = @"JWT Authorization header using the Bearer scheme.  
-                      Enter 'Bearer' [space] and then your token in the text input below.
-                      Example: 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9'",
+                      Enter 'Bearer' [space] and then your token in the text input below.",
         Name = "Authorization",
         In = Microsoft.OpenApi.Models.ParameterLocation.Header,
         Type = Microsoft.OpenApi.Models.SecuritySchemeType.ApiKey,
@@ -100,19 +106,16 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+// JSON OPTIONS
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
     {
         options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.Preserve;
     });
 
-
-
+// APP PIPELINE
 var app = builder.Build();
 
-
-
-// Middleware para desarrollo
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -121,11 +124,10 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-// ORDEN CORRECTO DE MIDDLEWARES
 app.UseCors("PermitirTodo");
-app.UseAuthentication();                     // 1. Autenticación
-app.UseMiddleware<TokenActivoMiddleware>();  // 2. Validación de token activo
-app.UseAuthorization();                      // 3. Autorización
+app.UseAuthentication();
+app.UseMiddleware<TokenActivoMiddleware>();
+app.UseAuthorization();
 
 app.MapControllers();
 

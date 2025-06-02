@@ -1,10 +1,9 @@
-﻿using CoreManagerSP.API.CoreManager.Application.DTOs.Prestamo.TipoPrestamo;
+﻿using CoreManagerSP.API.CoreManager.Application.DTOs.TipoPrestamo;
 using CoreManagerSP.API.CoreManager.Application.Interfaces.Prestamo;
 using CoreManagerSP.API.CoreManager.Domain.Entities;
 using CoreManagerSP.API.CoreManager.Infrastructure.Configurations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace CoreManagerSP.API.CoreManager.API.Controllers
 {

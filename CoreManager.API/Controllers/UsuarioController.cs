@@ -4,81 +4,71 @@ using CoreManagerSP.API.CoreManager.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace CoreManagerSP.API.CoreManager.API.Controllers
+[Authorize(Roles = "Admin")]
+[ApiController]
+[Route("api/[controller]")]
+public class UsuarioController : ControllerBase
 {
-    [Authorize(Roles = "Admin")]
-    [ApiController]
-    [Route("api/[controller]")]
-    public class UsuarioController : ControllerBase
+    private readonly IUsuarioService _usuarioService;
+
+    public UsuarioController(IUsuarioService usuarioService)
     {
-        private readonly IUsuarioService _usuarioService;
+        _usuarioService = usuarioService;
+    }
 
-        public UsuarioController(IUsuarioService usuarioService)
+    /// <summary>
+    /// [ADMIN] Lista todos los usuarios registrados en el sistema.
+    /// </summary>
+    [HttpGet("admin/listar")]
+    public async Task<ActionResult<List<Usuario>>> ListarUsuariosAdmin()
+    {
+        var usuarios = await _usuarioService.ObtenerTodosAsync();
+        return Ok(usuarios);
+    }
+
+    /// <summary>
+    /// [ADMIN] Obtiene un usuario por su ID.
+    /// </summary>
+    [HttpGet("admin/{id}")]
+    public async Task<ActionResult<Usuario>> ObtenerUsuarioPorIdAdmin(int id)
+    {
+        var usuario = await _usuarioService.ObtenerPorIdAsync(id);
+        if (usuario == null) return NotFound();
+        return Ok(usuario);
+    }
+
+    /// <summary>
+    /// [ADMIN] Registra un nuevo usuario desde el panel de administración.
+    /// </summary>
+    [HttpPost("admin/registrar")]
+    public async Task<ActionResult<Usuario>> RegistrarUsuarioDesdeAdmin([FromBody] UsuarioCreateDto dto)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ModelState);
+
+        try
         {
-            _usuarioService = usuarioService;
+            var usuario = await _usuarioService.CrearAsync(dto);
+            return CreatedAtAction(nameof(ObtenerUsuarioPorIdAdmin), new { id = usuario.Id }, usuario);
         }
-
-        /// <summary>
-        /// Obtiene la lista de todos los usuarios registrados.
-        /// </summary>
-        /// <returns>Lista de usuarios.</returns>
-        [HttpGet]
-        public async Task<ActionResult<List<Usuario>>> Get()
+        catch (InvalidOperationException ex)
         {
-            var usuarios = await _usuarioService.ObtenerTodosAsync();
-            return Ok(usuarios);
+            return BadRequest(new { mensaje = ex.Message });
         }
-
-        /// <summary>
-        /// Obtiene un usuario por su ID.
-        /// </summary>
-        /// <param name="id">ID del usuario.</param>
-        /// <returns>Usuario encontrado o error 404 si no existe.</returns>
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Usuario>> GetById(int id)
+        catch (Exception)
         {
-            var usuario = await _usuarioService.ObtenerPorIdAsync(id);
-            if (usuario == null) return NotFound();
-            return Ok(usuario);
+            return StatusCode(500, new { mensaje = "Ocurrió un error inesperado al crear el usuario." });
         }
+    }
 
-        /// <summary>
-        /// Crea un nuevo usuario.
-        /// </summary>
-        /// <param name="dto">Datos del usuario a registrar.</param>
-        /// <returns>Usuario creado o error de validación.</returns>
-        [HttpPost]
-        public async Task<ActionResult<Usuario>> Create([FromBody] UsuarioCreateDto dto)
-        {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
-
-            try
-            {
-                var usuario = await _usuarioService.CrearAsync(dto);
-                return CreatedAtAction(nameof(GetById), new { id = usuario.Id }, usuario);
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(new { mensaje = ex.Message });
-            }
-            catch (Exception)
-            {
-                return StatusCode(500, new { mensaje = "Ocurrió un error inesperado al crear el usuario." });
-            }
-        }
-
-        /// <summary>
-        /// Elimina un usuario por su ID.
-        /// </summary>
-        /// <param name="id">ID del usuario a eliminar.</param>
-        /// <returns>NoContent si fue eliminado, o NotFound si no existe.</returns>
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> Delete(int id)
-        {
-            var eliminado = await _usuarioService.EliminarAsync(id);
-            if (!eliminado) return NotFound();
-            return NoContent();
-        }
+    /// <summary>
+    /// [ADMIN] Elimina un usuario por su ID.
+    /// </summary>
+    [HttpDelete("admin/eliminar/{id}")]
+    public async Task<IActionResult> EliminarUsuarioAdmin(int id)
+    {
+        var eliminado = await _usuarioService.EliminarAsync(id);
+        if (!eliminado) return NotFound();
+        return NoContent();
     }
 }
