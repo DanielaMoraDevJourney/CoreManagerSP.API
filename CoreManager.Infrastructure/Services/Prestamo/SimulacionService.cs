@@ -101,8 +101,12 @@ namespace CoreManagerSP.API.CoreManager.Application.Services.Prestamo
             _context.Solicitudes.Add(solicitud);
             await _context.SaveChangesAsync();
 
-            // ✔ Ejecutar análisis completo incluyendo mejoras
+            var entidades = await ObtenerEntidadesPorTipoPrestamoAsync(dto.TipoPrestamoId);
+            if (!entidades.Any())
+                throw new InvalidOperationException("No existen entidades financieras que ofrezcan este tipo de préstamo.");
+
             await _analisisService.AnalizarSolicitudAsync(solicitud.Id);
+
 
             return true;
         }

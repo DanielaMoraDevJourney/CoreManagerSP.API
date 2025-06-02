@@ -2,9 +2,12 @@
 using CoreManagerSP.API.CoreManager.Application.DTOs.Mejoras;
 using CoreManagerSP.API.CoreManager.Application.DTOs.Prestamo.Sugerencias;
 using CoreManagerSP.API.CoreManager.Application.DTOs.SimulacionDePrestamos;
+using CoreManagerSP.API.CoreManager.Application.DTOs.TipoPrestamo;
 using CoreManagerSP.API.CoreManager.Application.Interfaces.Prestamo;
+using CoreManagerSP.API.CoreManager.Infrastructure.Configurations;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace CoreManagerSP.API.CoreManager.API.Controllers
 {
@@ -17,17 +20,21 @@ namespace CoreManagerSP.API.CoreManager.API.Controllers
         private readonly ISimulacionService _simulacionService;
         private readonly IAnalisisService _analisisService;
         private readonly IMejorasService _mejorasService;
+        private readonly CoreManagerDbContext _context;
+
 
         public SolicitudPrestamoController(
             ISolicitudService solicitudService,
             ISimulacionService simulacionService,
             IAnalisisService analisisService,
-            IMejorasService mejorasService)
+            IMejorasService mejorasService,
+            CoreManagerDbContext context)
         {
             _solicitudService = solicitudService;
             _simulacionService = simulacionService;
             _analisisService = analisisService;
             _mejorasService = mejorasService;
+            _context = context;
         }
 
         // ───────────────────────────────────────────────────────────────────────────────
@@ -95,8 +102,20 @@ namespace CoreManagerSP.API.CoreManager.API.Controllers
                     detalle = ex.Message
                 });
             }
+        }
 
+        [HttpGet("combo")]
+        public async Task<IActionResult> ObtenerParaCombo()
+        {
+            var tipos = await _context.TiposPrestamo
+                .Select(tp => new TipoPrestamoComboDto
+                {
+                    Id = tp.Id,
+                    Nombre = tp.Nombre
+                })
+                .ToListAsync();
 
+            return Ok(tipos);
         }
     }
 }
