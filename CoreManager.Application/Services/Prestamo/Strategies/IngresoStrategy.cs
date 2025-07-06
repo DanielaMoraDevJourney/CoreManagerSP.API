@@ -25,3 +25,5 @@ namespace CoreManagerSP.API.CoreManager.Application.Services.Prestamo.Strategies
             }
         }
     }
+}
+
