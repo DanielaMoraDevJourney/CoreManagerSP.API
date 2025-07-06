@@ -2,10 +2,15 @@
 using CoreManagerSP.API.CoreManager.Application.DTOs.Prestamo.Sugerencias;
 using CoreManagerSP.API.CoreManager.Application.DTOs.Prestamo;
 using CoreManagerSP.API.CoreManager.Application.Interfaces.Prestamo;
+using CoreManagerSP.API.CoreManager.Application.Services.Prestamo.Strategies;
 using CoreManagerSP.API.CoreManager.Domain.Entities;
-using CoreManagerSP.API.CoreManager.Infrastructure.Configurations;
 using Microsoft.EntityFrameworkCore;
 using CoreManagerSP.API.CoreManager.Application.DTOs.Analisis;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using CoreManagerSP.API.CoreManager.Infrastructure.Configurations;
 
 namespace CoreManagerSP.API.CoreManager.Application.Services.Prestamo
 {
@@ -13,11 +18,16 @@ namespace CoreManagerSP.API.CoreManager.Application.Services.Prestamo
     {
         private readonly CoreManagerDbContext _context;
         private readonly IAnalisisService _analisisService;
+        private readonly IEnumerable<IUsuarioMejoraStrategy> _strategies;
 
-        public MejorasService(CoreManagerDbContext context, IAnalisisService analisisService)
+        public MejorasService(
+            CoreManagerDbContext context,
+            IAnalisisService analisisService,
+            IEnumerable<IUsuarioMejoraStrategy> strategies)
         {
             _context = context;
             _analisisService = analisisService;
+            _strategies = strategies;
         }
 
         public async Task<List<MejoraSugerida>> ObtenerMejorasPorEntidadAsync(int solicitudId, int entidadId)
@@ -40,56 +50,11 @@ namespace CoreManagerSP.API.CoreManager.Application.Services.Prestamo
             {
                 var variable = mejora.Key;
                 var nuevoValor = mejora.Value;
-                string valorAnterior = "";
 
-                try
+                var strategy = _strategies.FirstOrDefault(s => s.CanHandle(variable));
+                if (strategy != null)
                 {
-                    switch (variable)
-                    {
-                        case "Ingreso":
-                            valorAnterior = usuario.Ingreso.ToString();
-                            usuario.Ingreso = decimal.Parse(nuevoValor);
-                            break;
-                        case "TarjetaCredito":
-                            valorAnterior = usuario.TarjetaCredito.ToString();
-                            usuario.TarjetaCredito = bool.Parse(nuevoValor);
-                            break;
-                        case "AniosHistorialCrediticio":
-                            valorAnterior = usuario.AniosHistorialCrediticio.ToString();
-                            usuario.AniosHistorialCrediticio = int.Parse(nuevoValor);
-                            break;
-                        case "DeudasVigentes":
-                            valorAnterior = usuario.DeudasVigentes.ToString();
-                            usuario.DeudasVigentes = decimal.Parse(nuevoValor);
-                            break;
-                        case "CuotasMensualesComprometidas":
-                            valorAnterior = usuario.CuotasMensualesComprometidas.ToString();
-                            usuario.CuotasMensualesComprometidas = decimal.Parse(nuevoValor);
-                            break;
-                        case "NumeroCreditosActivos":
-                            valorAnterior = usuario.NumeroCreditosActivos.ToString();
-                            usuario.NumeroCreditosActivos = int.Parse(nuevoValor);
-                            break;
-                        case "TiempoUltimoIncumplimiento":
-                            valorAnterior = usuario.TiempoUltimoIncumplimiento;
-                            usuario.TiempoUltimoIncumplimiento = nuevoValor;
-                            break;
-                        default:
-                            continue;
-                    }
-
-                    cambios.Add(new HistorialMejoras
-                    {
-                        SolicitudPrestamoId = solicitud.Id,
-                        VariableModificada = variable,
-                        ValorAnterior = valorAnterior,
-                        ValorNuevo = nuevoValor,
-                        FechaAplicacion = DateTime.UtcNow
-                    });
-                }
-                catch
-                {
-                    continue;
+                    strategy.Apply(usuario, nuevoValor, cambios, solicitud.Id);
                 }
             }
 
@@ -118,48 +83,24 @@ namespace CoreManagerSP.API.CoreManager.Application.Services.Prestamo
             {
                 var variable = mejora.Variable;
                 var nuevoValor = mejora.ValorNuevo;
-                string valorAnterior = "";
 
-                switch (variable)
+                var strategy = _strategies.FirstOrDefault(s => s.CanHandle(variable));
+                if (strategy != null)
                 {
-                    case "Ingreso":
-                        valorAnterior = usuario.Ingreso.ToString();
-                        usuario.Ingreso = decimal.Parse(nuevoValor);
-                        break;
-                    case "TarjetaCredito":
-                        valorAnterior = usuario.TarjetaCredito.ToString();
-                        usuario.TarjetaCredito = bool.Parse(nuevoValor);
-                        break;
-                    case "AniosHistorialCrediticio":
-                        valorAnterior = usuario.AniosHistorialCrediticio.ToString();
-                        usuario.AniosHistorialCrediticio = int.Parse(nuevoValor);
-                        break;
-                    case "DeudasVigentes":
-                        valorAnterior = usuario.DeudasVigentes.ToString();
-                        usuario.DeudasVigentes = decimal.Parse(nuevoValor);
-                        break;
-                    case "CuotasMensualesComprometidas":
-                        valorAnterior = usuario.CuotasMensualesComprometidas.ToString();
-                        usuario.CuotasMensualesComprometidas = decimal.Parse(nuevoValor);
-                        break;
-                    case "NumeroCreditosActivos":
-                        valorAnterior = usuario.NumeroCreditosActivos.ToString();
-                        usuario.NumeroCreditosActivos = int.Parse(nuevoValor);
-                        break;
-                    case "TiempoUltimoIncumplimiento":
-                        valorAnterior = usuario.TiempoUltimoIncumplimiento;
-                        usuario.TiempoUltimoIncumplimiento = nuevoValor;
-                        break;
-                    default:
-                        continue;
+                    // Reutilizamos la lógica de estrategia para generar historial
+                    var registro = new List<HistorialMejoras>();
+                    strategy.Apply(usuario, nuevoValor, registro, solicitudOriginal.Id);
+
+                    foreach (var hist in registro)
+                    {
+                        cambiosAplicados.Add(new CambioVariableDto
+                        {
+                            Variable = hist.VariableModificada,
+                            ValorAnterior = hist.ValorAnterior,
+                            ValorNuevo = hist.ValorNuevo
+                        });
+                    }
                 }
-
-                cambiosAplicados.Add(new CambioVariableDto
-                {
-                    Variable = variable,
-                    ValorAnterior = valorAnterior,
-                    ValorNuevo = nuevoValor
-                });
             }
 
             _context.Usuarios.Update(usuario);
@@ -190,7 +131,7 @@ namespace CoreManagerSP.API.CoreManager.Application.Services.Prestamo
             {
                 Mensaje = "Mejoras aplicadas y nueva simulación generada.",
                 Fecha = nuevaSolicitud.FechaSolicitud,
-                CambiosAplicados = cambiosAplicados, // <- nuevo campo
+                CambiosAplicados = cambiosAplicados,
                 SolicitudOriginal = new SolicitudResumenDto
                 {
                     Id = solicitudOriginal.Id,
@@ -216,7 +157,6 @@ namespace CoreManagerSP.API.CoreManager.Application.Services.Prestamo
             };
         }
 
-
         public async Task<ResultadoMejorasAplicadasDto> AplicarMejorasAutoAsync(int solicitudId)
         {
             var resultados = await _analisisService.ObtenerTodosPorSolicitudAsync(solicitudId);
@@ -229,7 +169,6 @@ namespace CoreManagerSP.API.CoreManager.Application.Services.Prestamo
                     ValorNuevo = m.ValorSugerido
                 }).ToList();
 
-
             var dto = new AplicarMejorasSimuladasDto
             {
                 SolicitudId = solicitudId,
@@ -238,6 +177,5 @@ namespace CoreManagerSP.API.CoreManager.Application.Services.Prestamo
 
             return await AplicarMejorasAvanzadoAsync(dto);
         }
-
     }
 }
