@@ -2,7 +2,6 @@
 using CoreManagerSP.API.CoreManager.Application.DTOs.Prestamo.Sugerencias;
 using CoreManagerSP.API.CoreManager.Application.DTOs.Prestamo.Sugerencias.CoreManagerSP.API.CoreManager.Application.DTOs.Prestamo.Analisis;
 using CoreManagerSP.API.CoreManager.Application.Interfaces.Prestamo;
-using CoreManagerSP.API.CoreManager.Application.Services.Prestamo;
 using CoreManagerSP.API.CoreManager.Domain.Entities;
 using CoreManagerSP.API.CoreManager.Infrastructure.Configurations;
 using Microsoft.EntityFrameworkCore;
@@ -42,8 +41,7 @@ namespace CoreManagerSP.API.CoreManager.Application.Services.Prestamo
                     a.SolicitudPrestamoId == solicitudId &&
                     a.EntidadFinancieraId == entidadId);
 
-            return resultado?.MejorasSugeridas?.ToList()
-                   ?? new List<MejoraSugerida>();
+            return resultado?.MejorasSugeridas?.ToList() ?? new List<MejoraSugerida>();
         }
 
         public async Task<List<AnalisisResultado>> ObtenerRankingAsync(int solicitudId)
@@ -172,7 +170,8 @@ namespace CoreManagerSP.API.CoreManager.Application.Services.Prestamo
                 .Include(s => s.Usuario)
                 .Include(s => s.TipoPrestamo)
                 .FirstOrDefaultAsync(s => s.Id == solicitudId);
-            if (solicitud == null) throw new Exception("Solicitud no encontrada.");
+            if (solicitud == null)
+                throw new Exception("Solicitud no encontrada.");
 
             var usuario = solicitud.Usuario;
             var entidades = await _context.EntidadesFinancieras
@@ -183,12 +182,15 @@ namespace CoreManagerSP.API.CoreManager.Application.Services.Prestamo
 
             foreach (var entidad in entidades)
             {
-                // Uso del servicio de cálculo
+                // Cálculo de cuota y probabilidad/aptitud vía ICreditoCalculator
                 var cuota = _calculator.ComputeMonthlyInstallment(solicitud.Monto, solicitud.Plazo, entidad.TasaInteres);
                 var (prob, apto) = _calculator.Evaluate(entidad, usuario, cuota);
 
+                // Generación de sugerencias exactamente igual a tu versión original
                 var mejoras = new List<MejoraSugerida>();
+
                 if (usuario.Ingreso < entidad.IngresoMinimo)
+                {
                     mejoras.Add(new MejoraSugerida
                     {
                         Variable = "Ingreso",
@@ -198,8 +200,62 @@ namespace CoreManagerSP.API.CoreManager.Application.Services.Prestamo
                         EsObligatoria = true,
                         Prioridad = 1
                     });
-                // ... resto de generación de mejoras idéntica a la original ...
+                }
 
+                if (usuario.AniosHistorialCrediticio < entidad.AntiguedadHistorialMinima)
+                {
+                    mejoras.Add(new MejoraSugerida
+                    {
+                        Variable = "AniosHistorialCrediticio",
+                        ValorSugerido = entidad.AntiguedadHistorialMinima.ToString(),
+                        Descripcion = "Esperar hasta cumplir con la antigüedad crediticia requerida.",
+                        ImpactoEstimado = 0.1m,
+                        EsObligatoria = false,
+                        Prioridad = 2
+                    });
+                }
+
+                if (usuario.Ingreso > 0 && cuota / usuario.Ingreso > entidad.RelacionCuotaIngresoMaxima)
+                {
+                    var nuevoLimite = entidad.RelacionCuotaIngresoMaxima * usuario.Ingreso;
+                    mejoras.Add(new MejoraSugerida
+                    {
+                        Variable = "CuotasMensualesComprometidas",
+                        ValorSugerido = nuevoLimite.ToString("0.##"),
+                        Descripcion = "Reducir cuotas mensuales comprometidas para mejorar relación cuota-ingreso.",
+                        ImpactoEstimado = 0.15m,
+                        EsObligatoria = true,
+                        Prioridad = 1
+                    });
+                }
+
+                if (usuario.HaTenidoMora && !entidad.AceptaMora)
+                {
+                    mejoras.Add(new MejoraSugerida
+                    {
+                        Variable = "HaTenidoMora",
+                        ValorSugerido = "false",
+                        Descripcion = "Mantener un historial sin moras durante un tiempo para mejorar el perfil crediticio.",
+                        ImpactoEstimado = 0.2m,
+                        EsObligatoria = true,
+                        Prioridad = 2
+                    });
+                }
+
+                if (!usuario.TarjetaCredito && entidad.RequiereTarjetaCredito)
+                {
+                    mejoras.Add(new MejoraSugerida
+                    {
+                        Variable = "TarjetaCredito",
+                        ValorSugerido = "true",
+                        Descripcion = "Obtener una tarjeta de crédito activa para cumplir con los requisitos de la entidad.",
+                        ImpactoEstimado = 0.1m,
+                        EsObligatoria = false,
+                        Prioridad = 3
+                    });
+                }
+
+                // Persistimos el resultado con sus mejoras
                 var resultado = new AnalisisResultado
                 {
                     SolicitudPrestamoId = solicitud.Id,
@@ -210,6 +266,7 @@ namespace CoreManagerSP.API.CoreManager.Application.Services.Prestamo
                     MensajeResumen = "Generado automáticamente por análisis",
                     MejorasSugeridas = mejoras
                 };
+
                 _context.AnalisisResultados.Add(resultado);
             }
 
